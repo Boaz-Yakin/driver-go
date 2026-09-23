@@ -35,11 +35,11 @@ export default function DriverPage() {
   // GPS 운행 중 여부: IN_TRANSIT 상태일 때만 활성화
   const isOnRoute = delivery?.status === 'IN_TRANSIT';
 
-  // GPS 훅 — 배달 ID / 드라이버 ID가 있을 때만 동작
+  // GPS 훅 — 배달 ID가 있을 때만 동작 (driver_id가 없어도 테스트 가능하도록)
   useGpsTracker({
     deliveryId: delivery?.id ?? '',
-    driverId: delivery?.driver_id ?? '',
-    isActive: isOnRoute && !!delivery?.driver_id,
+    driverId: delivery?.driver_id ?? 'unassigned-driver',
+    isActive: isOnRoute,
   });
 
   useEffect(() => {
