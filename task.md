@@ -41,3 +41,10 @@
 - [x] 4.2 DB 스키마와 일치하도록 타입 모델 및 `delivery.service.ts` 리팩토링
 - [x] 4.3 드라이버 모바일 전용 뷰(`/driver`) 및 스와이프 액션 UI 구현
 - [x] 4.4 관리자 대시보드(`/dashboard`) 실제 데이터 연동 리팩토링
+
+---
+
+## 🔒 Phase 5: 보안 강화 (API Routes + RLS)
+- [x] 5.1 Supabase RLS(Row Level Security) 정책 적용
+- [x] 5.2 Next.js API Routes 구현 (`/api/deliveries`, `/api/drivers`)
+- [x] 5.3 클라이언트 서비스를 API Routes 호출로 리팩토링
