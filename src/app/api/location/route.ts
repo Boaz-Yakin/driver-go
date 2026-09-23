@@ -29,16 +29,20 @@ export async function POST(request: Request) {
 
   const { delivery_id, driver_id, lat, lng, speed } = body;
 
-  if (!delivery_id || !driver_id || lat == null || lng == null) {
+  if (!delivery_id || lat == null || lng == null) {
     return NextResponse.json(
-      { error: 'delivery_id, driver_id, lat, lng are required' },
+      { error: 'delivery_id, lat, lng are required' },
       { status: 400 }
     );
   }
 
+  // UUID 형식이 아닌 임시 ID('unassigned-driver' 등)가 오면 null로 처리
+  const isValidUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(driver_id);
+  const safeDriverId = isValidUuid ? driver_id : null;
+
   const { data, error } = await supabase
     .from('location_logs')
-    .insert([{ delivery_id, driver_id, lat, lng, speed: speed ?? null }])
+    .insert([{ delivery_id, driver_id: safeDriverId, lat, lng, speed: speed ?? null }])
     .select()
     .single();
 
