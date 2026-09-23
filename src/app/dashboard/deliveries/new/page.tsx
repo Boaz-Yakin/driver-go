@@ -62,41 +62,41 @@ export default function NewDeliveryPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-secondary mb-1">Driver ID (UUID)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Driver ID (UUID)</label>
               <input
                 name="driver_id"
                 value={formData.driver_id}
                 onChange={handleChange}
-                className="w-full bg-bg-elevated border border-default rounded-md px-3 py-2 text-primary focus:border-border-focus focus:ring-1 focus:ring-border-focus outline-none"
+                className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-secondary mb-1">Recipient Phone</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Recipient Phone</label>
               <input
                 name="recipient_phone"
                 value={formData.recipient_phone}
                 onChange={handleChange}
-                className="w-full bg-bg-elevated border border-default rounded-md px-3 py-2 text-primary focus:border-border-focus focus:ring-1 focus:ring-border-focus outline-none"
+                className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                 required
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-secondary mb-1">Origin Address</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Origin Address</label>
               <input
                 name="origin_address"
                 value={formData.origin_address}
                 onChange={handleChange}
-                className="w-full bg-bg-elevated border border-default rounded-md px-3 py-2 text-primary focus:border-border-focus focus:ring-1 focus:ring-border-focus outline-none"
+                className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                 required
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-secondary mb-1">Destination Address</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Destination Address</label>
               <input
                 name="destination_address"
                 value={formData.destination_address}
                 onChange={handleChange}
-                className="w-full bg-bg-elevated border border-default rounded-md px-3 py-2 text-primary focus:border-border-focus focus:ring-1 focus:ring-border-focus outline-none"
+                className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                 required
               />
             </div>
