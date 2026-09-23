@@ -1,181 +1,79 @@
-﻿# Technical Requirements Documents
-<!-- TRD: "특정 기능/모듈을 어떻게 구현할 것인가?" -->
-<!-- 코드 작성 전에 먼저 이 문서에 설계를 명시한다. Design-First 원칙 -->
+# AI 기반 드라이버 ETA 자동화 및 분석 시스템 설계 (TRD)
 
-## 사용 방법
-
-1. 새 기능 구현 전 아래 템플릿을 복사하여 TRD 항목을 추가한다.
-2. `CLAUDE.md`의 CRITICAL 규칙: **TRD 미작성 기능은 구현하지 않는다.**
-3. 구현 완료 후 **Status를 `Done`으로 업데이트**하고, 실제 구현과 다른 부분이 있으면 TRD을 수정한다.
+## 1. 시스템 목표
+미국 조지아 주 및 인접 주(플로리다, 알라배마, 사우스캐롤라이나, 테네시 등)를 중심으로 운행하는 물류회사의 환경에 최적화된 시스템 구축. 
+드라이버의 수동 개입 없이 실시간 위치를 기반으로 ETA를 예측/공유하고, 수신자(고객사, 창고 등)에게 배송 현황을 자동 알림 및 트래킹 화면으로 제공하며, 드라이버별/경로별 주행 패턴을 학습하여 ETA 정확도를 높이는 자동화 시스템.
 
 ---
 
-## TRD-001: {기능/모듈명}
-<!-- 예: 사용자 인증 플로우 -->
+## 2. 주요 시스템 구성 (System Architecture)
 
-**Status**: `Proposed` | `In Progress` | `Done` | `Cancelled`  
-**작성일**: {YYYY-MM-DD}  
-**작성자**: {이름}  
-**관련 PRD 기능**: [F-001](01_PRD.md#3-core-features--mvp-scope-핵심-기능)  
-**관련 ADR**: [ADR-004](02_ADR.md#adr-004-인증인가-전략)
+### 2.1. 드라이버 앱 (Driver App)
+- **역할**: "운행 시작" 트리거, 실시간 GPS 수집 및 전송
+- **핵심 기술 및 제약사항 해결**:
+  - **하이브리드 네비게이션 지원**: 자체 내장 지도(Mapbox/Google Maps SDK 등)를 통해 앱 내에서 끊김없는 길안내를 제공하되, 교통상황이 복잡하거나 베테랑 드라이버의 선호도를 반영해 Google Maps, Waze 등 외부 전용 네비게이션 앱으로 원클릭 연동(Deep Link)되도록 옵션 제공.
+  - **맥락 기반(Context-Aware) UI**: 드라이버가 목적지 반경(예: 100m) 내 진입 시, '건물 출입구 정보', '고객 메모', '주차 팁' 등을 내장 지도 위에 자동으로 팝업 노출하여 드롭오프 효율 극대화.
+  - **Background Geolocation**: 타 외부 네비게이션을 포그라운드로 사용 중에도 안정적으로 위치를 수집하기 위해, OS별 백그라운드 권한(`Foreground Service` 및 `항상 허용`) 필수.
+  - **배터리 최적화 회피 (Doze Mode 우회)**: OS의 강제 종료 방지를 위해 앱 설치 시 "배터리 사용량 최적화 제외" 권한을 사용자에게 명시적으로 요청 및 획득.
+  - **Deep Link 연동**: 드라이버 편의성을 위해 "운행 시작" 시 자동으로 목적지가 세팅된 구글맵이 실행되도록 딥링크 연동.
+  - **전력 관리 가이드**: 두 개의 GPS 앱 동시 구동에 따른 배터리 소모/발열 관리를 위해 차량 내 상시 충전 가이드 제공 및 적정 GPS 수집 주기(예: 15~30초) 설정.
+  - **Offline/Sync 매커니즘**: 미국 남동부의 넓은 주간 고속도로(Interstate) 및 외곽 지역(Rural Area)의 잦은 네트워크 음영 지역(Dead Zone)을 고려해, 로컬 스토리지(SQLite 등)에 GPS 캐싱 후 네트워크 복구 시 일괄 전송(Batch Sync) 필수.
 
----
+### 2.2. 백엔드 및 실시간 스트리밍 (Backend & Data Streaming)
+- **역할**: 위치 데이터 수신, 이벤트 트리거 판별(출발, 지연, 주 경계 통과, 도착 임박 등) 및 타임존(Timezone) 처리.
+- **핵심 기술**:
+  - 타임존 자동 변환: 조지아(EST)와 알라배마/테네시(CST) 등 운행 중 발생하는 타임존 변경을 자동 감지하여 일관된 ETA 제공 (UTC 기준 저장 후 클라이언트 로컬 타임 변환).
+  - WebSocket / Server-Sent Events (SSE): 클라이언트(수신자 웹앱)로 실시간 위치 푸시.
+  - Message Queue (Kafka, RabbitMQ 등): 대량의 위치 데이터 비동기 처리 및 시스템 부하 분산.
 
-### 1. Overview (개요)
-{이 기능이 무엇을 하는지 2~3문장으로 요약}
+### 2.3. AI ETA 예측 엔진 (ETA & Routing Engine)
+- **역할**: 미국 내 화물/물류에 특화된 라우팅 및 과거 배송 이력/드라이버 패턴을 반영한 ETA 보정
+- **핵심 기술**:
+  - **Base 라우팅 API**: Google Maps API, Mapbox, 혹은 화물차 전용 라우팅이 가능한 HERE Routing API, Trimble API 등 적용.
+  - **머신러닝(ML) 모델**:
+    - 피처(Features): 드라이버 ID, 시간대, 요일, 기상 상태, 특정 주간 고속도로(I-75, I-85 등)의 상습 정체, 주 경계(Weigh Station 등) 통과 시간, 하차지별 평균 대기 시간.
+    - 모델: XGBoost, LightGBM, LSTM 등 시계열 기반 모델.
 
-> 예: 이메일/패스워드 기반 로그인 및 회원가입 플로우를 구현한다. Supabase Auth를 사용하며, 세션은 Next.js Middleware에서 서버 사이드로 검증한다.
+### 2.4. 알림 시스템 (Notification System)
+- **역할**: 상태 변화 및 이벤트 트리거 시 알림 발송
+- **핵심 기술**:
+  - 알림 채널 연동: Twilio 기반의 SMS 및 WhatsApp 발송, 이메일 알림. (미국 B2B 환경에 맞춰 표준 SMS/Email 주력)
+  - 템플릿 엔진: 상황별(도착 30분 전, 예상치 못한 20분 이상 지연 등) 동적 메시지 생성 (영어 및 필요시 스페인어 지원 고려).
+  - 스로틀링(Throttling): 장거리 운행 시 반복적인 지연 알림을 막기 위한 쿨다운 타임 적용.
 
----
+### 2.5. 수신자 트래킹 웹앱 (Recipient Tracking Web)
+- **역할**: 수신자가 앱 설치 없이 링크 하나로 접속해 실시간 위치와 예상 시간 확인
+- **핵심 기술**:
+  - SPA 기반 웹 (Next.js, React 등): 모바일 및 데스크톱(창고 관리자용) 최적화 반응형 UI.
+  - Map SDK (Google Maps / Mapbox): 실시간 트럭 마커 애니메이션 구현.
 
-### 2. API Interfaces (인터페이스 정의)
-
-#### Server Actions / API Routes
-```typescript
-// 예시: app/api/auth/login/route.ts
-POST /api/auth/login
-Request:  { email: string; password: string }
-Response: { user: User; session: Session } | { error: string }
-
-// 예시: app/api/auth/logout/route.ts
-POST /api/auth/logout
-Response: { success: boolean }
-```
-
-#### Service Layer Functions
-```typescript
-// 예시: services/auth.service.ts
-async function loginUser(email: string, password: string): Promise<Result<User, AuthError>>
-async function logoutUser(): Promise<void>
-async function getCurrentUser(): Promise<User | null>
-```
-
-#### Component Props
-```typescript
-// 예시: components/features/LoginForm.tsx
-interface LoginFormProps {
-  onSuccess: (user: User) => void;
-  onError: (error: string) => void;
-  redirectTo?: string;
-}
-```
+### 2.6. 관리자 관제 대시보드 (Admin Control Tower)
+- **역할**: 다수의 드라이버 배송 현황 실시간 모니터링, 예외 상황 대응 및 통계 분석 (향후 확장성을 고려한 설계)
+- **핵심 기술 및 연동 전략**:
+  - **실시간 플릿 맵 (Real-time Fleet Map)**: 백엔드 실시간 스트리밍(WebSocket/SSE)과 연동되어 전체 차량의 위치 및 상태(정상, 지연, 오프라인)를 지도 위에 시각화.
+  - **예외 상황 필터링**: AI ETA 엔진과 연동하여 도착 지연 예측, 경로 이탈(Off-Route) 등 이슈 발생 건만 상단에 부각(Red Zone)시켜 빠른 대응 유도.
+  - **단계적 확장 아키텍처**: 초기 MVP 단계에서는 별도의 무거운 프론트엔드 개발 없이 API 기반으로 노코드/로우코드 툴(Retool, Supabase Studio 등)을 연결해 가볍게 관제. 이후 데이터 축적 시 자체 커스텀 대시보드(Next.js)로 즉시 전환할 수 있도록 API 컨트롤러 계층 분리 설계.
 
 ---
 
-### 3. Data Model (데이터 모델)
+## 3. 데이터 및 인프라 설계
 
-```sql
--- 예시: Supabase 테이블 정의
-CREATE TABLE profiles (
-  id          UUID REFERENCES auth.users(id) PRIMARY KEY,
-  email       TEXT NOT NULL,
-  role        TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
-  created_at  TIMESTAMPTZ DEFAULT NOW(),
-  updated_at  TIMESTAMPTZ DEFAULT NOW()
-);
+### 3.1. 데이터베이스 구조 (Database - Supabase/PostgreSQL)
+- **위치 시계열 데이터**: 실시간 데이터는 Redis 처리 후, PostgreSQL(TimescaleDB)에 적재.
+- **주요 테이블**:
+  - `Deliveries`: 화물 정보 (상태, 출발지/목적지, 운송장, 배송 기사 ID 등)
+  - `Location_Logs`: GPS 로그 (위도, 경도, 타임스탬프(UTC), 속도)
+  - `ETA_Histories`: 예측 시간과 실제 도착 시간 비교 로그
+  - `Driver_Profiles`: 드라이버별 특성 및 평균 주행 패턴 메타데이터.
 
--- RLS 정책
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view own profile" ON profiles
-  FOR SELECT USING (auth.uid() = id);
-```
+### 3.2. 보안 및 컴플라이언스
+- **토큰 기반 인증**: 수신자용 트래킹 링크는 화물 인도 완료 시 자동으로 비활성화되는 JWT 기반 임시 URL 발급.
+- **미국 내 프라이버시 고려**: 상업용 운전자의 위치 추적 동의 절차, 운행 종료 시 프라이버시 보호를 위한 개인 위치 추적 중단 기능 명확화.
 
 ---
 
-### 4. State Management (상태 관리)
+## 4. 단계별 개발 로드맵 (Phases)
 
-```typescript
-// 예시: Zustand store
-interface AuthStore {
-  user: User | null;
-  isLoading: boolean;
-  setUser: (user: User | null) => void;
-}
-```
-
----
-
-### 5. Error Handling & Security (에러 처리 & 보안)
-
-| 시나리오 | 처리 방법 | HTTP 상태코드 |
-|---------|----------|--------------|
-| {예: 잘못된 자격증명} | {예: 제네릭 에러 메시지 반환 (정보 노출 방지)} | 401 |
-| {예: 유효하지 않은 세션} | {예: 자동 로그아웃 및 로그인 페이지 리다이렉트} | 401 |
-| {예: Rate Limit 초과} | {예: 1분간 요청 차단, 사용자에게 안내} | 429 |
-| {예: 서버 오류} | {예: Sentry 에러 로깅, 사용자에게 일반 오류 메시지} | 500 |
-
-**보안 체크리스트**:
-- [ ] 비밀번호는 절대 로그에 남기지 않는다
-- [ ] API 응답에서 비밀번호 해시 필드 제외
-- [ ] HTTPS 전용 (HTTP Strict Transport Security)
-- [ ] CSRF 토큰 적용
-
----
-
-### 6. Test Strategy (테스트 전략)
-
-```typescript
-// 유닛 테스트 (Vitest)
-describe('AuthService', () => {
-  it('유효한 자격증명으로 로그인 성공', async () => { ... });
-  it('잘못된 비밀번호로 AuthError 반환', async () => { ... });
-  it('존재하지 않는 이메일로 AuthError 반환', async () => { ... });
-});
-
-// E2E 테스트 (Playwright)
-test('로그인 → 대시보드 이동 플로우', async ({ page }) => { ... });
-test('로그인 실패 시 에러 메시지 표시', async ({ page }) => { ... });
-```
-
----
-
-### 7. Implementation Checklist (구현 체크리스트)
-
-- [ ] Service layer 함수 작성 (`services/auth.service.ts`)
-- [ ] API Route 핸들러 작성 (`app/api/auth/`)
-- [ ] Middleware 세션 검증 로직 작성
-- [ ] LoginForm 컴포넌트 작성
-- [ ] 에러 처리 및 로딩 상태 처리
-- [ ] 유닛 테스트 작성 및 통과
-- [ ] E2E 테스트 작성 및 통과
-- [ ] `npm run lint` 통과
-- [ ] `npm run type-check` 통과
-
----
-
-## TRD-002: {다음 기능명}
-
-**Status**: `Proposed`  
-**작성일**: {YYYY-MM-DD}
-
-> 위 TRD-001 템플릿을 복사하여 작성한다.
-
----
-
-## TRD 추가 템플릿
-
-```markdown
-## TRD-{번호}: {기능명}
-
-**Status**: Proposed
-**작성일**: YYYY-MM-DD
-**작성자**: {이름}
-**관련 PRD 기능**: [F-{번호}](01_PRD.md#...)
-**관련 ADR**: [ADR-{번호}](02_ADR.md#...)
-
-### 1. Overview
-### 2. API Interfaces
-### 3. Data Model
-### 4. State Management
-### 5. Error Handling & Security
-### 6. Test Strategy
-### 7. Implementation Checklist
-```
-
----
-
-## Change Log
-
-| 날짜 | 내용 | 작성자 |
-|------|------|--------|
-| {YYYY-MM-DD} | 최초 작성 | {이름} |
+- **Phase 1 (MVP)**: 오프라인 싱크가 가능한 기본 드라이버 위치 추적 앱, 기본 ETA 계산 및 SMS 알림, 수신자용 웹 트래킹 화면 구축. **관리자 모니터링은 노코드 툴(Retool, Supabase Studio) 및 메신저 알림 연동으로 최소화하여 앱 런칭에 집중.**
+- **Phase 2 (Data Pipeline & B2B 통계)**: 장거리 화물 위치 데이터 축적. **분리된 API 계층을 활용하여 자체 커스텀 '관리자 관제 대시보드(Control Tower)'를 도입**하고, 실시간 예외 상황 처리 및 경로 이탈 감지 기능 고도화.
+- **Phase 3 (AI & ML)**: 축적된 장거리 운행 데이터 및 드라이버별 특성을 반영한 머신러닝 기반 ETA 보정 알고리즘(상습 정체, Weigh Station 대기 시간 예측 등) 적용.

@@ -1,138 +1,25 @@
-﻿# Architecture Decision Records
-<!-- ADR: "어떤 시스템/기술 구조를 가져가는가?" -->
-<!-- 각 결정은 번복하기 어려운 선택들이다. 충분한 근거와 트레이드오프를 반드시 기록한다 -->
+# Architecture Decision Record (ADR)
+## 프로젝트명: Driver-Go ETA System (가칭)
 
-## 철학
+### 1. 백엔드 및 데이터베이스 (BaaS)
+* **결정:** **Supabase (PostgreSQL)** 사용.
+* **배경:** 빠른 MVP 개발을 위해 인증, 데이터베이스, 실시간 웹소켓 구독을 통합 제공하는 BaaS가 필요함.
+* **대안 및 기각 이유:** Firebase를 고려했으나, 위치 로그(Location Logs)와 같은 시계열 데이터 및 복잡한 관계형 데이터(드라이버-화물) 조회를 위해 강력한 SQL(PostgreSQL) 및 향후 TimescaleDB 확장이 가능한 Supabase를 최종 선택함.
 
-> {예: MVP 속도 최우선. 외부 의존성은 최소화한다. 작동하는 최소 구현을 선택하고, 필요할 때 교체한다.}
+### 2. 드라이버 앱 프론트엔드 (Mobile)
+* **결정:** **React Native (또는 Flutter)** 
+* **배경:** iOS와 Android 동시 지원이 필요하며, 백그라운드 Geolocation 및 하드웨어(햅틱/음성) 제어 플러그인 생태계가 잘 갖춰져 있음.
+* **제약사항:** 배터리 최적화 정책(Doze mode 등)을 우회하기 위한 Native 모듈(Foreground Service) 통합 필수.
 
----
+### 3. 수신자 및 관리자 웹 (Web Frontend)
+* **결정:** **Next.js (React)** 및 **Tailwind CSS**
+* **배경:** 수신자가 접속할 트래킹 링크는 빠른 로딩과 모바일 최적화가 중요. Next.js를 통해 API 라우팅과 SSR/CSR을 유연하게 처리.
+* **UI 원칙:** 관리자 및 수신자 UI는 `docs/04_UI_GUIDE.md`를 엄격히 준수하여 일관된 디자인 시스템 적용.
 
-## ADR-001: {핵심 프레임워크 선택}
-<!-- 예: Next.js 15 (App Router) 선택 -->
+### 4. 지도 및 라우팅 API
+* **결정:** **Google Maps Platform** (추후 Mapbox 또는 상용차 전용 API 확장 고려)
+* **배경:** 가장 익숙하고 정확도 높은 지도 데이터 제공. 드라이버 앱의 내비게이션 딥링크 연동 시 Google Maps가 표준으로 작용.
 
-**상태**: Accepted  
-**결정일**: {YYYY-MM-DD}  
-**결정자**: {이름}
-
-### Context (배경)
-{왜 이 결정이 필요했는지 설명. 어떤 대안들을 검토했는지}
-
-> 예: SSR이 필요한 데이터 중심 애플리케이션이며, SEO가 중요하다. React 생태계를 유지하면서 서버 렌더링을 지원하는 프레임워크가 필요했다.
-
-### Decision (결정)
-{무엇을 선택했는지}
-
-> 예: Next.js 15 App Router를 선택한다. Server Components를 기본으로 사용하고, 인터랙션이 필요한 부분만 Client Component로 분리한다.
-
-### Consequences (결과 & 트레이드오프)
-| 장점 | 단점 |
-|------|------|
-| {예: Vercel 배포 연동 최적화} | {예: App Router 학습 곡선} |
-| {예: Server Component로 API 키 노출 방지} | {예: Pages Router 대비 커뮤니티 자료 적음} |
-
-### Rejected Alternatives (거절한 대안)
-- **{예: Remix}**: {예: 팀 경험 부족. 전환 비용이 더 크다고 판단}
-- **{예: Vite SPA}**: {예: SSR 미지원으로 SEO 불가}
-
----
-
-## ADR-002: {데이터베이스 선택}
-<!-- 예: Supabase (PostgreSQL) 선택 -->
-
-**상태**: Accepted  
-**결정일**: {YYYY-MM-DD}  
-**결정자**: {이름}
-
-### Context (배경)
-{왜 이 결정이 필요했는지}
-
-### Decision (결정)
-{무엇을 선택했는지}
-
-### Consequences (결과 & 트레이드오프)
-| 장점 | 단점 |
-|------|------|
-| {장점 1} | {단점 1} |
-| {장점 2} | {단점 2} |
-
-### Rejected Alternatives (거절한 대안)
-- **{대안 1}**: {거절 이유}
-
----
-
-## ADR-003: {상태 관리 전략}
-
-**상태**: Accepted  
-**결정일**: {YYYY-MM-DD}
-
-### Context
-{서버 상태와 클라이언트 상태를 어떻게 관리할지 결정이 필요했다}
-
-### Decision
-- **서버 상태**: {예: React Query (TanStack Query) — API 데이터 캐싱 및 동기화}
-- **클라이언트 상태**: {예: Zustand — 전역 UI 상태 (모달, 사이드바 등)}
-- **로컬 상태**: {예: useState/useReducer — 컴포넌트 내부 상태}
-
-### Consequences
-| 장점 | 단점 |
-|------|------|
-| {장점 1} | {단점 1} |
-
----
-
-## ADR-004: {인증/인가 전략}
-
-**상태**: Accepted  
-**결정일**: {YYYY-MM-DD}
-
-### Decision
-{예: Supabase Auth + Next.js Middleware를 사용한다. JWT 토큰 기반 세션 관리. 역할은 Admin/User 2가지로 제한(PRD-001 참조).}
-
-### Security Rules
-- {예: 모든 API Route는 서버 사이드에서 세션 검증 필수}
-- {예: RLS(Row Level Security)를 데이터베이스 레벨에서 적용}
-- {예: 민감한 작업은 서버 사이드 Admin 클라이언트만 허용}
-
----
-
-## ADR-005: {배포 및 인프라 전략}
-
-**상태**: Accepted  
-**결정일**: {YYYY-MM-DD}
-
-### Decision
-{예: Vercel (프론트엔드) + Supabase (백엔드). CI/CD는 GitHub Actions.}
-
-### Environment Strategy
-| 환경 | 용도 | 브랜치 |
-|------|------|--------|
-| Production | 실제 서비스 | `main` |
-| Staging | QA 검증 | `develop` |
-| Preview | PR 리뷰 | feature branches |
-
----
-
-## ADR 추가 방법
-
-새로운 아키텍처 결정이 필요할 때:
-
-```markdown
-## ADR-{번호}: {결정 사항 제목}
-
-**상태**: Proposed / Accepted / Deprecated / Superseded by ADR-{번호}
-**결정일**: YYYY-MM-DD
-
-### Context
-### Decision
-### Consequences
-### Rejected Alternatives
-```
-
----
-
-## Change Log
-
-| 날짜 | 내용 | 작성자 |
-|------|------|--------|
-| {YYYY-MM-DD} | 최초 작성 | {이름} |
+### 5. 아키텍처 핵심 원칙 (CRITICAL)
+1. **API 은닉화:** 타사 API 키(Google Maps, Twilio 등)는 절대 클라이언트 번들에 하드코딩하지 않으며, 백엔드(Supabase Edge Functions 또는 Next.js API Routes)에서 처리한다.
+2. **배터리 최적화:** 실시간 GPS 수집 주기는 배터리 소모를 고려해 기본 15~30초로 제한하며 오프라인 시 로컬 큐에 저장 후 일괄 동기화(Batch Sync)한다.
