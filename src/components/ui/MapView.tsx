@@ -27,8 +27,8 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function MapView({
   markers,
-  center = [37.5665, 126.978], // 서울 기본값
-  zoom = 12,
+  center = [39.8283, -98.5795], // Center of US
+  zoom = 4, // Adjusted zoom for US view
   style = { width: '100%', height: '100%', minHeight: '400px' },
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);

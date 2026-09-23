@@ -59,7 +59,7 @@ export default function MapPage() {
           <p className="text-sm text-muted mt-0.5">
             {loading
               ? 'Loading...'
-              : `${trucks.length}대 운행 중 · ${lastUpdated?.toLocaleTimeString()} 업데이트`}
+              : `${trucks.length} active trucks · Updated at ${lastUpdated?.toLocaleTimeString()}`}
           </p>
         </div>
         <button
@@ -95,14 +95,14 @@ export default function MapPage() {
         )}
         {loading && (
           <div className="w-full h-96 flex items-center justify-center bg-bg-elevated text-muted text-sm">
-            지도 로딩 중...
+            Loading map...
           </div>
         )}
       </div>
 
       {trucks.length === 0 && !loading && (
         <p className="text-center text-muted text-sm py-4">
-          현재 운행 중인 트럭이 없습니다. 드라이버가 운행을 시작하면 여기에 표시됩니다.
+          No trucks are currently in transit. They will appear here when drivers start their routes.
         </p>
       )}
     </div>

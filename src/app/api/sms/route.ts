@@ -36,9 +36,9 @@ export async function POST(request: Request) {
     }
 
     const messages: Record<string, string> = {
-      PICKED_UP:  `[Driver-Go] 배송이 픽업되었습니다. 곧 출발 예정입니다. (ID: ${delivery_id.substring(0, 8)})`,
-      IN_TRANSIT: `[Driver-Go] 트럭이 출발했습니다! 목적지: ${destination ?? '확인 중'} (ID: ${delivery_id.substring(0, 8)})`,
-      DELIVERED:  `[Driver-Go] 배송이 완료되었습니다. 감사합니다! (ID: ${delivery_id.substring(0, 8)})`,
+      PICKED_UP:  `[Driver-Go] Order has been picked up. (ID: ${delivery_id.substring(0, 8)})`,
+      IN_TRANSIT: `[Driver-Go] Truck is in transit! Destination: ${destination ?? 'Unknown'} (ID: ${delivery_id.substring(0, 8)})`,
+      DELIVERED:  `[Driver-Go] Delivery completed. Thank you! (ID: ${delivery_id.substring(0, 8)})`,
     };
 
     const message = messages[event];

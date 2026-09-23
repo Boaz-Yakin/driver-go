@@ -13,9 +13,9 @@ const NEXT_STATUS: Partial<Record<DeliveryStatus, DeliveryStatus>> = {
 };
 
 const ACTION_LABEL: Partial<Record<DeliveryStatus, string>> = {
-  PENDING:    '▶  출발 (Pickup 완료)',
-  PICKED_UP:  '🚚  운행 시작',
-  IN_TRANSIT: '✅  배달 완료',
+  PENDING:    '▶ Start (Pickup Complete)',
+  PICKED_UP:  '🚚 Start Route',
+  IN_TRANSIT: '✅ Delivery Complete',
 };
 
 const STATUS_COLOR: Record<string, string> = {
@@ -94,9 +94,9 @@ export default function DriverPage() {
           margin: '0 auto 16px', fontSize: 28,
         }}>✓</div>
         <h2 style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 8 }}>
-          {delivery?.status === 'DELIVERED' ? '배달 완료!' : '배정된 배송 없음'}
+          {delivery?.status === 'DELIVERED' ? 'Delivery Completed!' : 'No Active Deliveries'}
         </h2>
-        <p style={{ color: '#888', fontSize: 14 }}>관리자에게 문의하세요.</p>
+        <p style={{ color: '#888', fontSize: 14 }}>Please contact your dispatcher.</p>
       </div>
     );
   }
@@ -116,7 +116,7 @@ export default function DriverPage() {
           display: 'flex', alignItems: 'center', gap: 8, fontSize: 13,
         }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#4ade80', display: 'inline-block', animation: 'pulse 2s infinite' }} />
-          <span style={{ color: '#4ade80' }}>GPS 실시간 수집 중</span>
+          <span style={{ color: '#4ade80' }}>Live GPS tracking active</span>
         </div>
       )}
 
@@ -151,7 +151,7 @@ export default function DriverPage() {
               <span style={{ fontSize: 12, color: '#ddd' }}>A</span>
             </div>
             <div>
-              <p style={{ fontSize: 11, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em' }}>출발</p>
+              <p style={{ fontSize: 11, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Origin</p>
               <p style={{ fontSize: 14, fontWeight: 500, marginTop: 2 }}>{delivery.origin_address}</p>
             </div>
           </div>
@@ -168,7 +168,7 @@ export default function DriverPage() {
               <span style={{ fontSize: 12, color: '#3b82f6' }}>B</span>
             </div>
             <div>
-              <p style={{ fontSize: 11, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em' }}>도착</p>
+              <p style={{ fontSize: 11, color: '#666', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Destination</p>
               <p style={{ fontSize: 14, fontWeight: 500, marginTop: 2 }}>{delivery.destination_address}</p>
             </div>
           </div>
@@ -189,7 +189,7 @@ export default function DriverPage() {
             transition: 'background 0.2s',
           }}
         >
-          {updating ? '처리 중...' : actionLabel}
+          {updating ? 'Processing...' : actionLabel}
         </button>
       )}
     </div>
