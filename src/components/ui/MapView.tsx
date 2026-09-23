@@ -116,6 +116,12 @@ export default function MapView({
         existing.delete(id);
       }
     });
+
+    // 마커가 하나 이상 있으면 지도 중심과 줌을 마커들에 맞게 자동 조정
+    if (data.length > 0) {
+      const bounds = L.latLngBounds(data.map(m => [m.lat, m.lng]));
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+    }
   }
 
   return (
