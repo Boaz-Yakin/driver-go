@@ -10,14 +10,6 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
       <main className="p-4 pb-20 overflow-y-auto">
         {children}
       </main>
-      <nav className="fixed bottom-0 w-full h-16 border-t border-[#262626] bg-[#141414] flex justify-around items-center px-2">
-        <button className="flex-1 h-full flex flex-col items-center justify-center text-[#3b82f6]">
-          <span className="text-sm font-medium">Active</span>
-        </button>
-        <button className="flex-1 h-full flex flex-col items-center justify-center text-[#737373] hover:text-[#d4d4d4]">
-          <span className="text-sm font-medium">Map</span>
-        </button>
-      </nav>
     </div>
   );
 }
