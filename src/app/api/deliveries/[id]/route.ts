@@ -36,5 +36,24 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  // SMS 트리거 — 수신자 전화번호가 있고, 주요 이벤트일 때
+  const smsEvents = ['PICKED_UP', 'IN_TRANSIT', 'DELIVERED'];
+  const newStatus = body.status as string | undefined;
+
+  if (newStatus && smsEvents.includes(newStatus) && data.recipient_phone) {
+    // 비동기로 SMS 발송 (응답 지연 방지)
+    fetch(`${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/api/sms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: data.recipient_phone,
+        delivery_id: id,
+        event: newStatus,
+        destination: data.destination_address,
+      }),
+    }).catch(err => console.error('[SMS trigger failed]', err));
+  }
+
   return NextResponse.json(data);
 }
+

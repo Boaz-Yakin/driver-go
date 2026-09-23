@@ -24,6 +24,11 @@ export function Sidebar() {
               Drivers
             </Link>
           </li>
+          <li>
+            <Link href="/dashboard/map" className="block px-4 py-2 text-sm text-secondary hover:text-primary hover:bg-bg-elevated rounded-md transition-colors">
+              Live Map 🗺️
+            </Link>
+          </li>
         </ul>
       </nav>
     </aside>
