@@ -47,7 +47,7 @@ export async function GET() {
     if (!loc) return null;
 
     // Supabase relation type can be array or single object depending on mapping
-    const driverData = d.drivers as { name: string; phone_number: string } | null; 
+    const driverData = (Array.isArray(d.drivers) ? d.drivers[0] : d.drivers) as { name: string; phone_number: string } | null; 
 
     return {
       id: d.id,
