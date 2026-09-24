@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { DriverService } from '@/services/delivery.service';
 import { Driver, DriverStatus } from '@/types';
 
@@ -11,6 +12,7 @@ const STATUS_STYLES: Record<DriverStatus, { bg: string; color: string; label: st
 };
 
 export default function DriversPage() {
+  const router = useRouter();
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -42,6 +44,18 @@ export default function DriversPage() {
       setError(err instanceof Error ? err.message : 'Failed to create driver');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggleStatus = async (driver: Driver) => {
+    if (driver.status === 'ON_ROUTE') return;
+    const newStatus = driver.status === 'AVAILABLE' ? 'OFF_DUTY' : 'AVAILABLE';
+    try {
+      const updated = await DriverService.updateStatus(driver.id, newStatus);
+      setDrivers(prev => prev.map(d => d.id === driver.id ? { ...d, status: updated.status } : d));
+    } catch (error) {
+      console.error('Failed to update status', error);
+      alert('Failed to update status');
     }
   };
 
@@ -100,19 +114,44 @@ export default function DriversPage() {
           {drivers.map(driver => {
             const s = STATUS_STYLES[driver.status];
             return (
-              <div key={driver.id} className="bg-surface border border-subtle rounded-lg p-5 hover:border-border-focus transition-colors">
+              <div 
+                key={driver.id} 
+                className="bg-surface border border-subtle rounded-lg p-5 hover:border-border-focus transition-colors cursor-pointer relative"
+                onClick={() => {
+                  router.push(`/dashboard/drivers/${driver.id}`);
+                }}
+              >
                 <div className="flex items-start justify-between mb-3">
                   <div className="w-10 h-10 rounded-full bg-bg-elevated border border-subtle flex items-center justify-center flex-shrink-0">
                     <span className="text-sm font-bold text-primary">{driver.name.charAt(0).toUpperCase()}</span>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-xs font-medium"
-                    style={{ background: s.bg, color: s.color }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleToggleStatus(driver); }}
+                    disabled={driver.status === 'ON_ROUTE'}
+                    className="px-2 py-0.5 rounded-full text-xs font-medium transition-opacity hover:opacity-80 disabled:hover:opacity-100 disabled:cursor-not-allowed"
+                    style={{ background: s.bg, color: s.color }}
+                  >
                     {s.label}
-                  </span>
+                  </button>
                 </div>
-                <h3 className="font-medium text-primary">{driver.name}</h3>
+                <h3 className="font-medium text-primary hover:text-accent transition-colors">{driver.name}</h3>
                 <p className="text-sm text-secondary mt-1">{driver.phone_number}</p>
                 <p className="text-xs text-muted mt-3 font-mono">{driver.id.substring(0, 8)}</p>
+                
+                {/* 현재 배송 정보 표시 */}
+                {driver.active_delivery && (
+                  <div className="mt-4 pt-3 border-t border-subtle">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-muted uppercase tracking-wider">Active Delivery</span>
+                      <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded">
+                        {driver.active_delivery.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <p className="text-sm text-primary truncate" title={driver.active_delivery.destination_address}>
+                      📍 {driver.active_delivery.destination_address}
+                    </p>
+                  </div>
+                )}
               </div>
             );
           })}

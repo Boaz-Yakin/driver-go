@@ -21,14 +21,29 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('drivers')
-    .select('*')
+    .select('*, deliveries(id, destination_address, status)')
     .order('created_at', { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  // Find the active delivery for each driver and format the response
+  const activeStatuses = ['PENDING', 'PICKED_UP', 'IN_TRANSIT'];
+  const formattedData = data.map((driver) => {
+    const active_delivery =
+      driver.deliveries?.find((d: { status: string }) => activeStatuses.includes(d.status)) || null;
+    
+    // Remove the full deliveries array from the response
+    const { deliveries: _deliveries, ...driverData } = driver;
+    
+    return {
+      ...driverData,
+      active_delivery,
+    };
+  });
+
+  return NextResponse.json(formattedData);
 }
 
 export async function POST(request: Request) {

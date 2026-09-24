@@ -13,30 +13,35 @@ export const SwipeAction: React.FC<SwipeActionProps> = ({ onAction, text, succes
   const [position, setPosition] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
+  const [isDraggingState, setIsDraggingState] = useState(false);
   const startX = useRef(0);
 
-  const maxPosition = containerRef.current ? containerRef.current.offsetWidth - 64 : 200; // 64 is knob width
+  const getMaxPosition = () => containerRef.current ? containerRef.current.offsetWidth - 64 : 200; // 64 is knob width
 
   const handleStart = (clientX: number) => {
     if (isSwiped) return;
     isDragging.current = true;
+    setIsDraggingState(true);
     startX.current = clientX - position;
   };
 
   const handleMove = (clientX: number) => {
     if (!isDragging.current || isSwiped) return;
+    const max = getMaxPosition();
     let newPos = clientX - startX.current;
     if (newPos < 0) newPos = 0;
-    if (newPos > maxPosition) newPos = maxPosition;
+    if (newPos > max) newPos = max;
     setPosition(newPos);
   };
 
   const handleEnd = () => {
     if (!isDragging.current || isSwiped) return;
     isDragging.current = false;
+    setIsDraggingState(false);
     
-    if (position > maxPosition * 0.8) {
-      setPosition(maxPosition);
+    const max = getMaxPosition();
+    if (position > max * 0.8) {
+      setPosition(max);
       setIsSwiped(true);
       onAction();
     } else {
@@ -56,6 +61,7 @@ export const SwipeAction: React.FC<SwipeActionProps> = ({ onAction, text, succes
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [position]);
 
   return (
@@ -70,7 +76,7 @@ export const SwipeAction: React.FC<SwipeActionProps> = ({ onAction, text, succes
       {!isSwiped && (
         <div 
           className="absolute left-1 h-14 w-14 rounded-full bg-[#3b82f6] shadow-lg flex items-center justify-center cursor-grab active:cursor-grabbing z-10"
-          style={{ transform: `translateX(${position}px)`, transition: isDragging.current ? 'none' : 'transform 0.3s ease' }}
+          style={{ transform: `translateX(${position}px)`, transition: isDraggingState ? 'none' : 'transform 0.3s ease' }}
           onMouseDown={(e) => handleStart(e.clientX)}
           onTouchStart={(e) => handleStart(e.touches[0].clientX)}
           onTouchMove={(e) => handleMove(e.touches[0].clientX)}

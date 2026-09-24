@@ -32,8 +32,8 @@ export default function DriverPage() {
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // GPS 운행 중 여부: IN_TRANSIT 상태일 때만 활성화
-  const isOnRoute = delivery?.status === 'IN_TRANSIT';
+  // GPS 운행 중 여부: PICKED_UP 또는 IN_TRANSIT 상태일 때 활성화
+  const isOnRoute = delivery?.status === 'IN_TRANSIT' || delivery?.status === 'PICKED_UP';
 
   // GPS 훅 — 배달 ID가 있을 때만 동작 (driver_id가 없어도 테스트 가능하도록)
   useGpsTracker({
@@ -43,15 +43,40 @@ export default function DriverPage() {
   });
 
   useEffect(() => {
+    let isMounted = true;
+    
+    // 강제 타임아웃 5초 설정 (네트워크가 아예 막혀서 Promise가 pending 상태로 멈추는 현상 방지)
+    const timeoutId = setTimeout(() => {
+      if (isMounted) {
+        console.error('[Timeout] Fetch is hanging...');
+        setError('네트워크 응답이 없습니다. 방화벽이나 데이터를 확인해주세요.');
+        setLoading(false);
+      }
+    }, 5000);
+
     DeliveryService.getAll()
       .then(all => {
+        if (!isMounted) return;
         const active = all.find(
           d => d.status === 'PENDING' || d.status === 'PICKED_UP' || d.status === 'IN_TRANSIT'
         );
         setDelivery(active ?? null);
       })
-      .catch(e => setError(e instanceof Error ? e.message : String(e)))
-      .finally(() => setLoading(false));
+      .catch(e => {
+        if (!isMounted) return;
+        console.error('Fetch error:', e);
+        setError(e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        clearTimeout(timeoutId);
+        setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   const handleAction = async () => {
@@ -72,10 +97,7 @@ export default function DriverPage() {
   };
 
   // ─── Render ───────────────────────────────────────────────
-  if (loading) {
-    return <div style={{ color: '#aaa', textAlign: 'center', marginTop: 40 }}>Loading...</div>;
-  }
-
+  
   if (error) {
     return (
       <div style={{ background: '#7f1d1d', borderRadius: 8, padding: 16, color: '#fca5a5' }}>
@@ -84,6 +106,7 @@ export default function DriverPage() {
     );
   }
 
+  // 로딩 중이거나, 배달이 없거나 완료된 경우
   if (!delivery || delivery.status === 'DELIVERED') {
     return (
       <div style={{ textAlign: 'center', marginTop: 60, color: '#fff' }}>
@@ -94,9 +117,11 @@ export default function DriverPage() {
           margin: '0 auto 16px', fontSize: 28,
         }}>✓</div>
         <h2 style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 8 }}>
-          {delivery?.status === 'DELIVERED' ? 'Delivery Completed!' : 'No Active Deliveries'}
+          {loading ? '데이터를 불러오는 중...' : (delivery?.status === 'DELIVERED' ? 'Delivery Completed!' : 'No Active Deliveries')}
         </h2>
-        <p style={{ color: '#888', fontSize: 14 }}>Please contact your dispatcher.</p>
+        <p style={{ color: '#888', fontSize: 14 }}>
+          {loading ? '잠시만 기다려주세요.' : 'Please contact your dispatcher.'}
+        </p>
       </div>
     );
   }

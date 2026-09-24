@@ -30,8 +30,34 @@ export function useGpsTracker({
   const sendLocation = useCallback(async () => {
     if (!isActive) return;
 
+    const postLocation = async (lat: number, lng: number, speed: number) => {
+      try {
+        await fetch('/api/location', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            delivery_id: deliveryId,
+            driver_id: driverId,
+            lat,
+            lng,
+            speed,
+          }),
+        });
+      } catch (err) {
+        console.error('[GPS] Failed to send location:', err);
+      }
+    };
+
     if (!navigator.geolocation) {
-      console.warn('[GPS] Geolocation API not supported');
+      console.warn('[GPS] Geolocation API not supported or not secure context.');
+      
+      // 개발 환경일 때만 임시 위치 전송
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[GPS] Using mock location for local development.');
+        const mockLat = 33.7490 + (Math.random() - 0.5) * 0.05;
+        const mockLng = -84.3880 + (Math.random() - 0.5) * 0.05;
+        await postLocation(mockLat, mockLng, 0);
+      }
       return;
     }
 
@@ -40,24 +66,17 @@ export function useGpsTracker({
         const { latitude, longitude, speed } = pos.coords;
         const speedKph = speed != null ? msToKph(speed) : 0;
         lastSpeedRef.current = speedKph;
-
-        try {
-          await fetch('/api/location', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              delivery_id: deliveryId,
-              driver_id: driverId,
-              lat: latitude,
-              lng: longitude,
-              speed: speedKph,
-            }),
-          });
-        } catch (err) {
-          console.error('[GPS] Failed to send location:', err);
+        await postLocation(latitude, longitude, speedKph);
+      },
+      async (err) => {
+        console.error('[GPS] getCurrentPosition error:', err);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[GPS] Using mock location due to error.');
+          const mockLat = 33.7490 + (Math.random() - 0.5) * 0.05;
+          const mockLng = -84.3880 + (Math.random() - 0.5) * 0.05;
+          await postLocation(mockLat, mockLng, 0);
         }
       },
-      (err) => console.error('[GPS] getCurrentPosition error:', err),
       { enableHighAccuracy: true, timeout: 10_000, maximumAge: 5_000 }
     );
   }, [deliveryId, driverId, isActive]);

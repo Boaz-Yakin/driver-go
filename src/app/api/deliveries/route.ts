@@ -21,7 +21,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('deliveries')
-    .select('*')
+    .select('*, driver:drivers(id, name, status)')
     .order('created_at', { ascending: false });
 
   if (error) {

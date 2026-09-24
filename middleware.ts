@@ -26,7 +26,7 @@ export async function middleware(request: NextRequest) {
   )
 
   const {
-    data: { user },
+    data: { user: _user },
   } = await supabase.auth.getUser()
 
   // 보호된 라우트(예: /dashboard)에 비로그인 사용자가 접근할 경우 로그인 페이지로 리다이렉트

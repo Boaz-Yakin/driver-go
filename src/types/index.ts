@@ -15,6 +15,8 @@ export interface Driver {
   phone_number: string;
   status: DriverStatus;
   created_at: string;
+  active_delivery?: { id: string; destination_address: string; status: DeliveryStatus } | null;
+  deliveries?: Delivery[];
 }
 
 export type DeliveryStatus = 'PENDING' | 'PICKED_UP' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
@@ -30,6 +32,13 @@ export interface Delivery {
   recipient_phone?: string | null;
   tracking_token?: string | null;
   created_at: string;
+  // join from drivers table
+  driver?: { id: string; name: string; status: DriverStatus } | null;
+}
+
+export interface DashboardStats {
+  driversOnline: number;
+  delayedCount: number;
 }
 
 export interface LocationLog {

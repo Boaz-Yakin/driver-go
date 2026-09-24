@@ -9,6 +9,9 @@ export interface TruckMarker {
   lng: number;
   label?: string;
   status?: string;
+  driver_name?: string;
+  driver_phone?: string;
+  speed?: number | null;
 }
 
 interface MapViewProps {
@@ -35,50 +38,6 @@ export default function MapView({
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<Map<string, Marker>>(new Map());
 
-  useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
-
-    // Leaflet을 동적으로 import (SSR 방지)
-    import('leaflet').then((L) => {
-      // 기본 아이콘 경로 수정 (Next.js 빌드 이슈 해결)
-      // @ts-expect-error - Leaflet internal
-      delete L.Icon.Default.prototype._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      });
-
-      const map = L.map(containerRef.current!).setView(center, zoom);
-      mapRef.current = map;
-
-      // OpenStreetMap 타일 레이어
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-      }).addTo(map);
-
-      // 초기 마커 렌더링
-      renderMarkers(L, map, markers);
-    });
-
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-        markersRef.current.clear();
-      }
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // 마커 변경 시 업데이트
-  useEffect(() => {
-    if (!mapRef.current) return;
-    import('leaflet').then((L) => {
-      renderMarkers(L, mapRef.current!, markers);
-    });
-  }, [markers]);
-
   function renderMarkers(L: typeof import('leaflet'), map: LeafletMap, data: TruckMarker[]) {
     const existing = markersRef.current;
 
@@ -99,12 +58,28 @@ export default function MapView({
         iconAnchor: [18, 18],
       });
 
+      const popupHtml = `
+        <div style="font-family: sans-serif; min-width: 150px;">
+          <h4 style="margin: 0 0 4px; font-size: 14px; font-weight: bold; color: #333;">${m.driver_name || 'Driver'}</h4>
+          <p style="margin: 0 0 8px; font-size: 11px; color: #666;">📞 ${m.driver_phone || 'No phone'}</p>
+          <div style="margin-bottom: 8px; font-size: 12px; font-weight: bold; color: ${color};">
+            ● ${m.status?.replace('_', ' ') || 'Unknown'}
+          </div>
+          <p style="margin: 0 0 4px; font-size: 12px; color: #444; line-height: 1.4;">
+            ${m.label ?? m.id.substring(0, 8)}
+          </p>
+          ${m.speed !== undefined && m.speed !== null ? `<p style="margin: 0; font-size: 11px; color: #888;">Speed: ${m.speed.toFixed(1)} km/h</p>` : ''}
+        </div>
+      `;
+
       if (existing.has(m.id)) {
-        existing.get(m.id)!.setLatLng([m.lat, m.lng]);
+        const marker = existing.get(m.id)!;
+        marker.setLatLng([m.lat, m.lng]);
+        marker.setPopupContent(popupHtml);
       } else {
         const marker = L.marker([m.lat, m.lng], { icon })
           .addTo(map)
-          .bindPopup(`<b>${m.label ?? m.id.substring(0, 8)}</b><br/>${m.status ?? ''}`);
+          .bindPopup(popupHtml);
         existing.set(m.id, marker);
       }
     });
@@ -123,6 +98,51 @@ export default function MapView({
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
     }
   }
+
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+
+    // Leaflet을 동적으로 import (SSR 방지)
+    import('leaflet').then((L) => {
+      // 기본 아이콘 경로 수정 (Next.js 빌드 이슈 해결)
+      // @ts-expect-error - Leaflet internal
+      delete L.Icon.Default.prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      });
+
+      const map = L.map(containerRef.current!).setView(center, zoom);
+      mapRef.current = map;
+
+      // Esri Dark Gray Canvas 타일 레이어 (무료, API 키 불필요)
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+        maxZoom: 16,
+      }).addTo(map);
+
+      // 초기 마커 렌더링
+      renderMarkers(L, map, markers);
+    });
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markersRef.current.clear();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 마커 변경 시 업데이트
+  useEffect(() => {
+    if (!mapRef.current) return;
+    import('leaflet').then((L) => {
+      renderMarkers(L, mapRef.current!, markers);
+    });
+  }, [markers]);
 
   return (
     <>

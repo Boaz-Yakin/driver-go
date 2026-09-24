@@ -20,10 +20,10 @@ export async function GET() {
     }
   );
 
-  // 현재 IN_TRANSIT 상태인 배송의 최신 위치만 조회
+  // 현재 IN_TRANSIT 상태인 배송의 최신 위치만 조회 (드라이버 정보 포함)
   const { data: deliveries, error: deliveryError } = await supabase
     .from('deliveries')
-    .select('id, driver_id, status, origin_address, destination_address')
+    .select('id, driver_id, status, origin_address, destination_address, drivers(name, phone_number)')
     .in('status', ['IN_TRANSIT', 'PICKED_UP']);
 
   if (deliveryError) {
@@ -46,9 +46,14 @@ export async function GET() {
 
     if (!loc) return null;
 
+    // Supabase relation type can be array or single object depending on mapping
+    const driverData = d.drivers as { name: string; phone_number: string } | null; 
+
     return {
       id: d.id,
       driver_id: d.driver_id,
+      driver_name: driverData?.name || 'Unknown',
+      driver_phone: driverData?.phone_number || '',
       status: d.status,
       lat: loc.lat,
       lng: loc.lng,
