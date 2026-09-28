@@ -35,11 +35,13 @@ export default function DriverPage() {
   // GPS 운행 중 여부: PICKED_UP 또는 IN_TRANSIT 상태일 때 활성화
   const isOnRoute = delivery?.status === 'IN_TRANSIT' || delivery?.status === 'PICKED_UP';
 
-  // GPS 훅 — 배달 ID가 있을 때만 동작 (driver_id가 없어도 테스트 가능하도록)
+  // GPS 훅 — 배달 ID가 있을 때만 동작
+  // Capacitor 앱에서는 상대 URL(/api/...)이 동작하지 않으므로 절대 URL 주입
   useGpsTracker({
     deliveryId: delivery?.id ?? '',
     driverId: delivery?.driver_id ?? 'unassigned-driver',
     isActive: isOnRoute,
+    serverBaseUrl: process.env.NEXT_PUBLIC_APP_URL ?? '',
   });
 
   useEffect(() => {
